@@ -22,6 +22,7 @@ BuildRequires:	pkgconfig(libswresample)
 BuildRequires:	pkgconfig(libjpeg)
 BuildRequires:	pkgconfig(libpng)
 BuildRequires:	pkgconfig(libwebp)
+BuildRequires:	cmake(libavif)
 BuildRequires:	pkgconfig(libavif)
 BuildRequires:	pkgconfig(libheif)
 BuildRequires:	python
@@ -38,6 +39,12 @@ libavif / libheif. Built without CUDA/nvJPEG so the same RPM works
 on CPU and on the ROCm torch build.
 
 %prep -a
+# Upstream FetchContent-downloads a prebuilt libavif from S3 (no
+# network on ABF, and we do not ship binaries we did not build).
+# Use the system cmake(libavif) package instead.
+sed -i 's|include(${CMAKE_CURRENT_SOURCE_DIR}/fetch_avif_from_s3.cmake)|find_package(libavif CONFIG REQUIRED)|' \
+	src/torchcodec/_core/CMakeLists.txt
+sed -i 's/libavif from S3/system libavif/' src/torchcodec/_core/CMakeLists.txt
 
 %build -p
 export BUILD_VERSION=%{version}
