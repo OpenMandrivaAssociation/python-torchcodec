@@ -98,17 +98,30 @@ export I_CONFIRM_THIS_IS_NOT_A_LICENSE_VIOLATION=1
 # on the HIP language, which is how PyTorch itself is built.
 # torchcodec only links the already-built torch_hip libraries.
 # hip::host is imported in CMakeLists before find_package(Torch).
+# The installed LoadHIP.cmake is not writable from rpmbuild, so
+# CMake is pointed at a patched copy. TORCH_INSTALL_PREFIX stays
+# the real prefix: TorchConfig would otherwise derive it from the copy.
 python - <<'PY'
 import pathlib
+import shutil
 import torch
-p = pathlib.Path(torch.__file__).resolve().parent / "share/cmake/Caffe2/public/LoadHIP.cmake"
+root = pathlib.Path(torch.__file__).resolve().parent
+src = root / "share/cmake"
+dst = pathlib.Path("torch-cmake").resolve()
+shutil.rmtree(dst, ignore_errors=True)
+shutil.copytree(src, dst)
+p = dst / "Caffe2/public/LoadHIP.cmake"
 text = p.read_text()
 old = "set(PYTORCH_FOUND_HIP FALSE)\n"
-new = old + "return()\n"
 if text.count(old) != 1:
     raise SystemExit(f"LoadHIP marker count {text.count(old)}")
-p.write_text(text.replace(old, new, 1))
+p.write_text(text.replace(old, old + "return()\n", 1))
+pathlib.Path("torch-install-prefix").write_text(str(root) + "\n")
 PY
+export TORCH_INSTALL_PREFIX="$(cat torch-install-prefix)"
+export Torch_DIR="$PWD/torch-cmake/Torch"
+export CMAKE_PREFIX_PATH="$PWD/torch-cmake${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
+export CMAKE_ARGS="${CMAKE_ARGS:+$CMAKE_ARGS }-DTorch_DIR=$PWD/torch-cmake/Torch"
 
 %files
 %doc README.md
