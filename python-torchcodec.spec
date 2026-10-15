@@ -93,6 +93,22 @@ export TORCHCODEC_DISABLE_COMPILE_WARNING_AS_ERROR=ON
 # Distro RPM: dynamically link system FFmpeg (ELF deps), do not
 # download the upstream non-GPL S3 build (needs the network).
 export I_CONFIRM_THIS_IS_NOT_A_LICENSE_VIOLATION=1
+# TheRock puts a ROCm prefix on the PATH, so Torch's LoadHIP no
+# longer returns early. It then demands PYTORCH_ROCM_ARCH and turns
+# on the HIP language, which is how PyTorch itself is built.
+# torchcodec only links the already-built torch_hip libraries.
+# hip::host is imported in CMakeLists before find_package(Torch).
+python - <<'PY'
+import pathlib
+import torch
+p = pathlib.Path(torch.__file__).resolve().parent / "share/cmake/Caffe2/public/LoadHIP.cmake"
+text = p.read_text()
+old = "set(PYTORCH_FOUND_HIP FALSE)\n"
+new = old + "return()\n"
+if text.count(old) != 1:
+    raise SystemExit(f"LoadHIP marker count {text.count(old)}")
+p.write_text(text.replace(old, new, 1))
+PY
 
 %files
 %doc README.md
