@@ -2,7 +2,7 @@
 
 Name:		python-torchcodec
 Version:	0.16.0
-Release:	1
+Release:	2
 Summary:	Decode and encode video, audio and images for PyTorch
 License:	BSD-3-Clause
 Group:		Development/Python
@@ -12,7 +12,7 @@ Source0:	https://github.com/pytorch/torchcodec/archive/refs/tags/v%{version}.tar
 BuildSystem:	python
 BuildRequires:	cmake
 BuildRequires:	ninja
-BuildRequires:	pkgconfig(python)
+BuildRequires:	pkgconfig(python3)
 BuildRequires:	pkgconfig(libavcodec)
 BuildRequires:	pkgconfig(libavformat)
 BuildRequires:	pkgconfig(libavutil)
