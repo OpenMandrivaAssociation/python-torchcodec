@@ -99,8 +99,9 @@ export I_CONFIRM_THIS_IS_NOT_A_LICENSE_VIOLATION=1
 # torchcodec only links the already-built torch_hip libraries.
 # hip::host is imported in CMakeLists before find_package(Torch).
 # The installed LoadHIP.cmake is not writable from rpmbuild, so
-# CMake is pointed at a patched copy. TORCH_INSTALL_PREFIX stays
-# the real prefix: TorchConfig would otherwise derive it from the copy.
+# CMake is pointed at a patched copy. That copy would otherwise
+# derive libtorch's prefix from its own path. Point both
+# TORCH_INSTALL_PREFIX and _IMPORT_PREFIX at the real torch tree.
 python - <<'PY'
 import pathlib
 import shutil
@@ -116,6 +117,22 @@ old = "set(PYTORCH_FOUND_HIP FALSE)\n"
 if text.count(old) != 1:
     raise SystemExit(f"LoadHIP marker count {text.count(old)}")
 p.write_text(text.replace(old, old + "return()\n", 1))
+prefix_old = (
+    'get_filename_component(_IMPORT_PREFIX "${CMAKE_CURRENT_LIST_FILE}" PATH)\n'
+    'get_filename_component(_IMPORT_PREFIX "${_IMPORT_PREFIX}" PATH)\n'
+    'get_filename_component(_IMPORT_PREFIX "${_IMPORT_PREFIX}" PATH)\n'
+    'get_filename_component(_IMPORT_PREFIX "${_IMPORT_PREFIX}" PATH)\n'
+)
+prefix_new = f'set(_IMPORT_PREFIX "{root}")\n'
+patched = 0
+for cfg in dst.rglob("*Targets.cmake"):
+    body = cfg.read_text()
+    if prefix_old not in body:
+        continue
+    cfg.write_text(body.replace(prefix_old, prefix_new))
+    patched += body.count(prefix_old)
+if patched < 1 or prefix_old in (dst / "Caffe2/Caffe2Targets.cmake").read_text():
+    raise SystemExit(f"import prefix patches: {patched}")
 pathlib.Path("torch-install-prefix").write_text(str(root) + "\n")
 PY
 export TORCH_INSTALL_PREFIX="$(cat torch-install-prefix)"
